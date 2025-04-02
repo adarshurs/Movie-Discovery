@@ -13,14 +13,24 @@ class MovieViewModel: ObservableObject {
     @Published var searchResults: [Movie] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published var favoriteMovies: Set<Movie> = []
+    @Published var showFavorites = false
     @Published var searchText = "" {
         didSet { searchMovies() }
+    }
+    
+    var displayedMovies: [Movie] {
+        searchResults.isEmpty ? movies : searchResults
+    }
+    
+    var filteredMovies: [Movie] {
+        showFavorites ? Array(favoriteMovies) : displayedMovies
     }
     
     private var cancellables = Set<AnyCancellable>()
     private let baseURL = "https://api.themoviedb.org/3"
     private var apiKey = ""
-
+    
     init() {
         configureCache()
         apiKey = getAPIKey()
@@ -28,64 +38,71 @@ class MovieViewModel: ObservableObject {
     }
     
     private func configureCache() {
-          let cacheSizeMemory = 50 * 1024 * 1024 // 50MB Memory Cache
-          let cacheSizeDisk = 100 * 1024 * 1024 // 100MB Disk Cache
-          let urlCache = URLCache(memoryCapacity: cacheSizeMemory, diskCapacity: cacheSizeDisk, diskPath: "tmdbCache")
-          URLCache.shared = urlCache
-      }
-
-    func fetchMovies() {
-            isLoading = true
-            errorMessage = nil
-
-            let url = "\(baseURL)/discover/movie?api_key=\(apiKey)"
-            
-            let request = URLRequest(url: URL(string: url)!, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 10)
-
-            AF.request(request)
-                .publishDecodable(type: MovieResponse.self)
-                .compactMap { $0.value }
-                .receive(on: DispatchQueue.main)
-                .sink(receiveCompletion: { completion in
-                    if case .failure(let error) = completion {
-                        self.errorMessage = error.localizedDescription
-                    }
-                    self.isLoading = false
-                }, receiveValue: { response in
-                    self.movies = response.results
-                })
-                .store(in: &cancellables)
-        }
-
-        func searchMovies() {
-                guard !searchText.isEmpty else {
-                    searchResults = []
-                    return
-                }
-
-                let url = "\(baseURL)/search/movie?query=\(searchText.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")&api_key=\(apiKey)"
-
-                let request = URLRequest(url: URL(string: url)!, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 10)
-
-                AF.request(request)
-                    .publishDecodable(type: MovieResponse.self)
-                    .compactMap { $0.value }
-                    .receive(on: DispatchQueue.main)
-                    .sink(receiveCompletion: { completion in
-                        if case .failure(let error) = completion {
-                            self.errorMessage = error.localizedDescription
-                        }
-                    }, receiveValue: { response in
-                        self.searchResults = response.results
-                    })
-                    .store(in: &cancellables)
-            }
-        
-
-    var displayedMovies: [Movie] {
-        searchResults.isEmpty ? movies : searchResults
+        let cacheSizeMemory = 50 * 1024 * 1024 // 50MB Memory Cache
+        let cacheSizeDisk = 100 * 1024 * 1024 // 100MB Disk Cache
+        let urlCache = URLCache(memoryCapacity: cacheSizeMemory, diskCapacity: cacheSizeDisk, diskPath: "tmdbCache")
+        URLCache.shared = urlCache
     }
     
+    func fetchMovies() {
+        isLoading = true
+        errorMessage = nil
+        
+        let url = "\(baseURL)/discover/movie?api_key=\(apiKey)"
+        
+        let request = URLRequest(url: URL(string: url)!, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 10)
+        
+        AF.request(request)
+            .publishDecodable(type: MovieResponse.self)
+            .compactMap { $0.value }
+            .receive(on: DispatchQueue.main)
+            .sink(receiveCompletion: { completion in
+                if case .failure(let error) = completion {
+                    self.errorMessage = error.localizedDescription
+                }
+                self.isLoading = false
+            }, receiveValue: { response in
+                self.movies = response.results
+            })
+            .store(in: &cancellables)
+    }
+    
+    func searchMovies() {
+        guard !searchText.isEmpty else {
+            searchResults = []
+            return
+        }
+        
+        let url = "\(baseURL)/search/movie?query=\(searchText.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")&api_key=\(apiKey)"
+        
+        let request = URLRequest(url: URL(string: url)!, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 10)
+        
+        AF.request(request)
+            .publishDecodable(type: MovieResponse.self)
+            .compactMap { $0.value }
+            .receive(on: DispatchQueue.main)
+            .sink(receiveCompletion: { completion in
+                if case .failure(let error) = completion {
+                    self.errorMessage = error.localizedDescription
+                }
+            }, receiveValue: { response in
+                self.searchResults = response.results
+            })
+            .store(in: &cancellables)
+    }
+    
+    
+    func toggleFavorite(_ movie: Movie) {
+        if favoriteMovies.contains(movie) {
+            favoriteMovies.remove(movie)
+        } else {
+            favoriteMovies.insert(movie)
+        }
+    }
+    
+    func isFavorite(_ movie: Movie) -> Bool {
+        favoriteMovies.contains(movie)
+    }
     
     func getAPIKey() -> String {
         guard let path = Bundle.main.path(forResource: "Secrets", ofType: "plist"),

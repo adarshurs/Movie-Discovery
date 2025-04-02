@@ -54,10 +54,12 @@ struct MovieListView: View {
                 .navigationTitle("Movies")
                 .toolbar {
                     Button(action: {
-                        viewModel.searchText = ""
+                        DispatchQueue.main.async {
+                            viewModel.searchText = ""
+                           }
                         viewModel.fetchMovies()
                     }) {
-                        Image(systemName: "arrow.clockwise") // SF Symbol for refresh
+                        Image(systemName: "arrow.clockwise")
                     }
 
                 }

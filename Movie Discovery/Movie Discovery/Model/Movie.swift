@@ -40,10 +40,3 @@ struct Movie: Codable, Identifiable {
         case voteCount = "vote_count"
     }
 }
-
-// Example usage: Decoding JSON data
-func decodeMovies(from jsonData: Data) -> MovieResponse? {
-    let decoder = JSONDecoder()
-    decoder.keyDecodingStrategy = .convertFromSnakeCase
-    return try? decoder.decode(MovieResponse.self, from: jsonData)
-}

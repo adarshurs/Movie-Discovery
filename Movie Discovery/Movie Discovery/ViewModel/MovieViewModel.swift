@@ -8,26 +8,29 @@
 import Foundation
 import Combine
 import Alamofire
-
 class MovieViewModel: ObservableObject {
     @Published var movies: [Movie] = []
+    @Published var searchResults: [Movie] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var searchText = "" {
-        didSet { searchMovies() } // Automatically triggers search on text change
+        didSet { searchMovies() }
     }
     
     private var cancellables = Set<AnyCancellable>()
-    private let apiURL = "https://api.themoviedb.org/3/discover/movie?api_key=01a635f7a0a2da67e08d3008bae4da43"
-    
+    private let baseURL = "https://api.themoviedb.org/3"
+    private var apiKey = ""
+
     init() {
+        apiKey = getAPIKey()
         fetchMovies()
     }
-    
+
     func fetchMovies() {
+        let apiURL = "\(baseURL)/discover/movie?api_key=\(apiKey)"
         isLoading = true
         errorMessage = nil
-        
+
         AF.request(apiURL)
             .publishDecodable(type: MovieResponse.self)
             .compactMap { $0.value }
@@ -42,17 +45,14 @@ class MovieViewModel: ObservableObject {
             })
             .store(in: &cancellables)
     }
-    
+
     func searchMovies() {
         guard !searchText.isEmpty else {
-            fetchMovies() // Reset to original movies when search is cleared
+            searchResults = []
             return
         }
         
-        let searchURL = "https://api.themoviedb.org/3/search/movie?query=\(searchText.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")&api_key=01a635f7a0a2da67e08d3008bae4da43"
-        
-        isLoading = true
-        errorMessage = nil
+        let searchURL = "\(baseURL)/search/movie?query=\(searchText.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")&api_key=\(apiKey)"
         
         AF.request(searchURL)
             .publishDecodable(type: MovieResponse.self)
@@ -62,11 +62,25 @@ class MovieViewModel: ObservableObject {
                 if case .failure(let error) = completion {
                     self.errorMessage = error.localizedDescription
                 }
-                self.isLoading = false
             }, receiveValue: { response in
-                self.movies = response.results
+                self.searchResults = response.results
             })
             .store(in: &cancellables)
     }
+
+    var displayedMovies: [Movie] {
+        searchResults.isEmpty ? movies : searchResults
+    }
+    
+    // Get the api key from secrets.plist file
+    func getAPIKey() -> String {
+        guard let path = Bundle.main.path(forResource: "Secrets", ofType: "plist"),
+              let plist = NSDictionary(contentsOfFile: path),
+              let apiKey = plist["TMDB_API_KEY"] as? String else {
+            fatalError("API Key not found. Make sure to add it to Secrets.plist")
+        }
+        return apiKey
+    }
 }
+
 

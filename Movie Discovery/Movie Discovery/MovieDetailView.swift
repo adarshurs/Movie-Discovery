@@ -18,17 +18,17 @@ struct MovieDetailView: View {
     
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) { // Added spacing for better readability
+            VStack(alignment: .leading, spacing: 16) {
                 AsyncImage(url: URL(string: "https://image.tmdb.org/t/p/w500\(movie.posterPath ?? "")")) { phase in
                                     if let image = phase.image {
                                         image.resizable()
-                                            .scaledToFit() // Keeps aspect ratio
-                                            .frame(maxWidth: .infinity) // Centers image without stretching
+                                            .scaledToFit()
+                                            .frame(maxWidth: .infinity)
                                             .cornerRadius(12)
                                     } else if phase.error != nil {
-                                        Color.gray.frame(height: 300) // Placeholder in case of an error
+                                        Color.gray.frame(height: 300)
                                     } else {
-                                        ProgressView().frame(height: 300) // Loading indicator
+                                        ProgressView().frame(height: 300)
                                     }
                                 }
                 
@@ -38,7 +38,7 @@ struct MovieDetailView: View {
                 
                 Text(movie.overview)
             }
-            .padding(.horizontal, 16) // Adds side padding
+            .padding(.horizontal, 16)
         }
         .navigationTitle(movie.title)
     }
